@@ -2,7 +2,7 @@ import 'dotenv/config'
 import { chat, streamToText } from '@tanstack/ai'
 import { openaiText } from '@tanstack/ai-openai'
 import { SYSTEM_PROMPT_V2 } from './prompt.js';
-import { NeonResponse, WebsocketPayload } from './types.js';
+import { NeonResponse, NeonResponseZodSchema, WebsocketPayload } from './types.js';
 import { reconstructMessage } from './helpers.js';
 import { codemodeTool, getNthWordFromTransmissionHistory, systemPrompt } from './tools.js';
 
@@ -47,12 +47,15 @@ socket.onmessage = async (event) => {
 
     console.log(`reply: ${reply}\n`);
 
+    // NEON's parser is unforgiving, so validate the shape before transmitting.
+    const response = NeonResponseZodSchema.parse(JSON.parse(reply.trim()));
+
     transmissionHistory.push({
         challenge: reconstructedMessage,
-        response: JSON.parse(reply.trim()) as NeonResponse,
+        response,
     })
 
-    socket.send(reply.trim());
+    socket.send(JSON.stringify(response));
 }
 
 socket.onerror = (error) => {
